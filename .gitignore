@@ -72,3 +72,6 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+#SteamSDK specific files that are not included in this plugin (yopu must own a SteamSDK license)
+Source/AslumeSteamHandler/Public/SteamSDK
