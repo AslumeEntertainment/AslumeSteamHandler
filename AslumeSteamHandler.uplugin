@@ -18,7 +18,14 @@
 		{
 			"Name": "AslumeSteamHandler",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "EarliestPossible"
 		}
-	]
+	],
+	
+	"PostBuildSteps":{
+		"Win64" : [
+			"mkdir $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64",
+			"copy $(PluginDir)\\Source\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64\\steam_api64.dll $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64"
+		]
+	}
 }

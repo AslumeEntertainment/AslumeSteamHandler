@@ -21,7 +21,7 @@ void FAslumeSteamHandlerModule::StartupModule()
 	FString LibraryPath;
 
 #if PLATFORM_WINDOWS
-	LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/SteamHandlerLibrary/RedistributableBin/win64/steam_api64.dll"));
+	LibraryPath = FPaths::Combine(*BaseDir, TEXT("Binaries/ThirdParty/SteamHandlerLibrary/RedistributableBin/win64/steam_api64.dll"));
 #elif PLATFORM_MAC
 	LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/SteamHandlerLibrary/RedistributableBin/osx/libsteam_api.dylib"));
 #endif // PLATFORM_WINDOWS
@@ -37,6 +37,10 @@ void FAslumeSteamHandlerModule::StartupModule()
 		return;
 	}
 
+	FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler", "Loaded Steam Handler Library"));
+
+	SteamAPI_RestartAppIfNecessary(480);
+
 	SteamAPI_Init();
 }
 
@@ -47,7 +51,7 @@ void FAslumeSteamHandlerModule::ShutdownModule()
 
 	// Free the dll handle
 	FPlatformProcess::FreeDllHandle(SteamLibraryHandle);
-	SteamLibraryHandle = nullptr;
+	//SteamLibraryHandle = nullptr;
 }
 
 #undef LOCTEXT_NAMESPACE
