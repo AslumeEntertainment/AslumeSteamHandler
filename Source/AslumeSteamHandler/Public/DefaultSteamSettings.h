@@ -9,7 +9,7 @@
 /**
  * 
  */
-UCLASS(Config = DefaultSteamSettings, defaultconfig, meta = (DisplayName = "Steam Settings"))
+UCLASS(Config = DefaultSteamSettings, defaultconfig, meta = (DisplayName = "Steam Settings"), Category = "SteamSettings")
 class ASLUMESTEAMHANDLER_API UDefaultSteamSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
@@ -17,9 +17,9 @@ class ASLUMESTEAMHANDLER_API UDefaultSteamSettings : public UDeveloperSettings
 public:
 	UDefaultSteamSettings();
 
-	UPROPERTY(Config, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Config, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), Category = "SteamSettings")
 	int AppID;
 
-	UPROPERTY(Config, EditAnywhere)
+	UPROPERTY(Config, EditAnywhere, Category = "SteamSettings")
 	FString SomeText;
 };

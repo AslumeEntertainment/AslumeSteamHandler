@@ -24,8 +24,8 @@
 	"PostBuildSteps":
 	{
 		"Win64": [
-			"mkdir $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64",
-			"copy $(PluginDir)\\Source\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64\\steam_api64.dll $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64"
+			"if not exist $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64\\steam_api64.dll mkdir $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64",
+			"if not exist $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64\\steam_api64.dll copy $(PluginDir)\\Source\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64\\steam_api64.dll $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64"
 		]
 	},
 	"DisallowedPlugins": [

@@ -4,7 +4,12 @@
 
 #define LOCTEXT_NAMESPACE "AslumeSteamHandlerModule"
 
+#include "Misc/FileHelper.h"
+#include "Misc/MessageDialog.h"
+#include "Modules/ModuleManager.h" //??
 #include "Interfaces/IPluginManager.h"
+#include "Misc/Paths.h"
+#include "HAL/PlatformProcess.h"
 
 #include "Steam/steam_api.h"
 
@@ -24,9 +29,7 @@ void FAslumeSteamHandlerModule::StartupModule()
 	LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/SteamHandlerLibrary/RedistributableBin/osx/libsteam_api.dylib"));
 #endif // PLATFORM_WINDOWS
 
-#if UE_BUILD_SHIPPING 
 	SteamLibraryHandle = !LibraryPath.IsEmpty() ? FPlatformProcess::GetDllHandle(*LibraryPath) : nullptr;
-#endif
 
 	if (SteamLibraryHandle == nullptr)
 	{
