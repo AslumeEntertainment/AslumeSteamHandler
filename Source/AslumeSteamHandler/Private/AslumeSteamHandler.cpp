@@ -13,10 +13,18 @@
 
 #include "Steam/steam_api.h"
 
+DEFINE_LOG_CATEGORY_STATIC(AslumeSteamHandler, Log, All);
+
 void FAslumeSteamHandlerModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 	
+	if (IsRunningGame() == false)
+	{
+		UE_LOG(AslumeSteamHandler, Warning, TEXT("Aslume Steam Handler will not load in editor. Only in standalone and packaged builds !"));
+		return;
+	}
+
 	// Get the base directory of this plugin
 	FString BaseDir = IPluginManager::Get().FindPlugin("AslumeSteamHandler")->GetBaseDir();
 
@@ -34,12 +42,12 @@ void FAslumeSteamHandlerModule::StartupModule()
 	if (SteamLibraryHandle == nullptr)
 	{
 		// Error and termination
-		UE_LOG(LogTemp, Error, TEXT("Failed to load Steam Handler Library"));
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler_DefaultSubsystem", "Failed to load Steam Handler Library"));
+		UE_LOG(AslumeSteamHandler, Error, TEXT("Failed to load Steam Handler Library"));
+		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler", "Failed to load Steam Handler Library"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Display, TEXT("Steam Handler Library Loaded Sucessfully"));
+	UE_LOG(AslumeSteamHandler, Display, TEXT("Steam Handler Library Loaded Sucessfully"));
 
 	
 	FFileHelper::SaveStringToFile(TEXT("480"), TEXT("steam_appid.txt"));
@@ -49,11 +57,11 @@ void FAslumeSteamHandlerModule::StartupModule()
 	if (!SteamAPI_Init())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to Initialize Steam"));
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler_DefaultSubsystem", "Failed to Initialize Steam"));
+		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler", "Failed to Initialize Steam"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Display, TEXT("Steam Initialized Sucessfully"));
+	UE_LOG(AslumeSteamHandler, Display, TEXT("Steam Initialized Sucessfully"));
 }
 
 void FAslumeSteamHandlerModule::ShutdownModule()
