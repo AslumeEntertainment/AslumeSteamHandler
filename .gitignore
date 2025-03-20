@@ -74,4 +74,5 @@ Plugins/**/Intermediate/*
 DerivedDataCache/*
 
 #SteamSDK specific files that are not included in this plugin (yopu must own a SteamSDK license)
-#Source/AslumeSteamHandler/Public/SteamSDK
+Source/ThirdParty/SteamHandlerLibrary/Public/Steam
+Source/ThirdParty/SteamHandlerLibrary/RedistributableBin

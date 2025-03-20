@@ -1,0 +1,3 @@
+On this level paste the steam folder form public folder from the Steam SDK and rename it as follows:
+
+Steam

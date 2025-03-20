@@ -1,0 +1,3 @@
+On this level paste the redistributable_bin folder form the Steam SDK and rename it as follows:
+
+RedistributableBin
