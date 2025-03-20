@@ -21,11 +21,21 @@
 			"LoadingPhase": "EarliestPossible"
 		}
 	],
-	
-	"PostBuildSteps":{
-		"Win64" : [
+	"PostBuildSteps":
+	{
+		"Win64": [
 			"mkdir $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64",
 			"copy $(PluginDir)\\Source\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64\\steam_api64.dll $(PluginDir)\\Binaries\\ThirdParty\\SteamHandlerLibrary\\RedistributableBin\\win64"
 		]
-	}
+	},
+	"DisallowedPlugins": [
+		{
+			"Name": "OnlineSubsystemSteam",
+			"Comment": ""
+		},
+		{
+			"Name": "SteamShared",
+			"Comment": ""
+		}
+	]
 }

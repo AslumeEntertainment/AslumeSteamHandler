@@ -40,6 +40,7 @@ public class AslumeSteamHandler : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+                "DeveloperSettings",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

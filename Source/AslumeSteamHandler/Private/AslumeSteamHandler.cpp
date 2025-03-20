@@ -2,18 +2,16 @@
 
 #include "AslumeSteamHandler.h"
 
+#define LOCTEXT_NAMESPACE "AslumeSteamHandlerModule"
+
 #include "Interfaces/IPluginManager.h"
 
 #include "Steam/steam_api.h"
 
-#define LOCTEXT_NAMESPACE "FAslumeSteamHandlerModule"
-
-DEFINE_LOG_CATEGORY_STATIC(AslumeSteamHandler, Log, All);
-
 void FAslumeSteamHandlerModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-
+	
 	// Get the base directory of this plugin
 	FString BaseDir = IPluginManager::Get().FindPlugin("AslumeSteamHandler")->GetBaseDir();
 
@@ -26,32 +24,39 @@ void FAslumeSteamHandlerModule::StartupModule()
 	LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/SteamHandlerLibrary/RedistributableBin/osx/libsteam_api.dylib"));
 #endif // PLATFORM_WINDOWS
 
-
+#if UE_BUILD_SHIPPING 
 	SteamLibraryHandle = !LibraryPath.IsEmpty() ? FPlatformProcess::GetDllHandle(*LibraryPath) : nullptr;
+#endif
 
-	if (SteamLibraryHandle ==  nullptr)
+	if (SteamLibraryHandle == nullptr)
 	{
 		// Error and termination
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler", "Failed to load Steam Handler Library"));
-		UE_LOG(AslumeSteamHandler, Error, TEXT("Failed to load Steam Handler Library"));
+		UE_LOG(LogTemp, Error, TEXT("Failed to load Steam Handler Library"));
+		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler_DefaultSubsystem", "Failed to load Steam Handler Library"));
 		return;
 	}
 
-	FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler", "Loaded Steam Handler Library"));
+	UE_LOG(LogTemp, Display, TEXT("Steam Handler Library Loaded Sucessfully"));
+
+	
+	FFileHelper::SaveStringToFile(TEXT("480"), TEXT("steam_appid.txt"));
 
 	SteamAPI_RestartAppIfNecessary(480);
 
-	SteamAPI_Init();
+	if (!SteamAPI_Init())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to Initialize Steam"));
+		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("AslumeSteamHandler_DefaultSubsystem", "Failed to Initialize Steam"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Display, TEXT("Steam Initialized Sucessfully"));
 }
 
 void FAslumeSteamHandlerModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
-
-	// Free the dll handle
-	FPlatformProcess::FreeDllHandle(SteamLibraryHandle);
-	//SteamLibraryHandle = nullptr;
 }
 
 #undef LOCTEXT_NAMESPACE
