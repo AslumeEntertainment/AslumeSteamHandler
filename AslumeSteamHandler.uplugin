@@ -18,7 +18,7 @@
 		{
 			"Name": "AslumeSteamHandler",
 			"Type": "Runtime",
-			"LoadingPhase": "EarliestPossible"
+			"LoadingPhase": "PostConfigInit"
 		}
 	],
 	"PostBuildSteps":
@@ -36,6 +36,21 @@
 		{
 			"Name": "SteamShared",
 			"Comment": ""
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "OnlineSubsystem",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemNull",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemUtils",
+			"Enabled": true,
+			"Optional": true
 		}
 	]
 }

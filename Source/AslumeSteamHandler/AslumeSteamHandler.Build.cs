@@ -26,7 +26,10 @@ public class AslumeSteamHandler : ModuleRules
 			new string[]
 			{
 				"Core",
-				"SteamHandlerLibrary",
+                "OnlineSubsystem",
+                "OnlineSubsystemNull",
+                //"OnlineSubsystemUtils",
+                "SteamHandlerLibrary",
 				"Projects"
 				// ... add other public dependencies that you statically link with here ...
 			}

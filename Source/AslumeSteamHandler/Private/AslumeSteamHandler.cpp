@@ -13,7 +13,10 @@
 
 #include "Steam/steam_api.h"
 
-DEFINE_LOG_CATEGORY_STATIC(AslumeSteamHandler, Log, All);
+#include "Foundation/OnlineSubsystemASH.h"
+
+DEFINE_LOG_CATEGORY(AslumeSteamHandler);
+
 
 void FAslumeSteamHandlerModule::StartupModule()
 {
@@ -49,6 +52,10 @@ void FAslumeSteamHandlerModule::StartupModule()
 
 	UE_LOG(AslumeSteamHandler, Display, TEXT("Steam Handler Library Loaded Sucessfully"));
 
+	ASHFactory = new FOnlineFactoryASH();
+
+	FOnlineSubsystemModule& OSS = FModuleManager::GetModuleChecked<FOnlineSubsystemModule>("OnlineSubsystem");
+	OSS.RegisterPlatformService(ASH_SUBSYSTEM, ASHFactory);
 	
 	FFileHelper::SaveStringToFile(TEXT("480"), TEXT("steam_appid.txt"));
 
@@ -68,6 +75,14 @@ void FAslumeSteamHandlerModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
+	if (IsRunningGame() == false)
+	{
+		return;
+	}
+	
+	SteamAPI_Shutdown();
+
+	delete ASHFactory;
 }
 
 #undef LOCTEXT_NAMESPACE
