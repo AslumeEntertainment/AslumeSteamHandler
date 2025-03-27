@@ -2,11 +2,14 @@
 
 #pragma once 
 
-//#include "Interfaces/OnlineSessionDelegates.h"
-//#include "OnlineSessionSettings.h"
 #include "Interfaces/OnlineSessionInterface.h"
-//#include "OnlineSubsystemNullPackage.h"
 //#include "Online/LANBeacon.h"
+
+class FNamedOnlineSession;
+class FOnlineSubsystemASH;
+class FLANSession;
+
+DECLARE_LOG_CATEGORY_EXTERN(OnlineSessionASH, Log, All);
 
 /**
  * Interface definition for the online services session services
@@ -15,6 +18,28 @@
  */
 class FOnlineSessionASH : public IOnlineSession
 {
+private:
+	/** Critical sections for thread safe operation of session lists */
+	mutable FCriticalSection SessionLock;
+
+	/** Current session settings */
+	FNamedOnlineSession* CurrentSession = nullptr;
+	FOnlineSubsystemASH* Subsystem = nullptr;
+
+	FLANSession* CurrentLanSession =  nullptr;
+
+	FOnlineSessionASH() {}
+
+protected:
+	void TickLanTasks(float DeltaTime);
+	void TickPendingInvites(float DeltaTime);
+
+public:
+
+	FOnlineSessionASH(FOnlineSubsystemASH* InSubsystem) : Subsystem(InSubsystem) {}
+
+	void Tick(float DeltaTime);
+
 	// Inherited via IOnlineSession
 	FNamedOnlineSession* AddNamedSession(FName SessionName, const FOnlineSessionSettings& SessionSettings) override;
 	FNamedOnlineSession* AddNamedSession(FName SessionName, const FOnlineSession& Session) override;
@@ -23,8 +48,15 @@ class FOnlineSessionASH : public IOnlineSession
 	void RemoveNamedSession(FName SessionName) override;
 	bool HasPresenceSession() override;
 	EOnlineSessionState::Type GetSessionState(FName SessionName) const override;
+
 	bool CreateSession(int32 HostingPlayerNum, FName SessionName, const FOnlineSessionSettings& NewSessionSettings) override;
 	bool CreateSession(const FUniqueNetId& HostingPlayerId, FName SessionName, const FOnlineSessionSettings& NewSessionSettings) override;
+	uint32 CreateLANSession(int32 HostingPlayerNum, FNamedOnlineSession* Session);
+
+	void OnValidQueryPacketReceived(uint8* PacketData, int32 PacketLength, uint64 ClientNonce);
+	void AppendSessionToPacket(class FNboSerializeToBufferASH& Packet, class FOnlineSession* Session);
+	void AppendSessionSettingsToPacket(FNboSerializeToBufferASH& Packet, FOnlineSessionSettings* SessionSettings);
+
 	bool StartSession(FName SessionName) override;
 	bool UpdateSession(FName SessionName, FOnlineSessionSettings& UpdatedSessionSettings, bool bShouldRefreshOnlineData) override;
 	bool EndSession(FName SessionName) override;
@@ -58,4 +90,7 @@ class FOnlineSessionASH : public IOnlineSession
 	void UnregisterLocalPlayer(const FUniqueNetId& PlayerId, FName SessionName, const FOnUnregisterLocalPlayerCompleteDelegate& Delegate) override;
 	int32 GetNumSessions() override;
 	void DumpSessionState() override;
+
+
+	FString GetDedicatedServerName() const;
 };

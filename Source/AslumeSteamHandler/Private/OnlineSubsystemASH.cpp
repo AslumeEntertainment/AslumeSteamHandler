@@ -11,8 +11,6 @@
 #include "Misc/Paths.h"
 #include "HAL/PlatformProcess.h"
 
-#include "Steam/steam_api.h"
-
 #include "Foundation/SubsystemDefinition.h"
 
 DEFINE_LOG_CATEGORY(AslumeSteamHandler);

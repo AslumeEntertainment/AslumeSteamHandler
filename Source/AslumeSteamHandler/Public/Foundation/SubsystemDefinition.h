@@ -2,12 +2,9 @@
 
 #pragma once 
 
-#include "OnlineSubsystemNull.h"
-#include "OnlineSubsystem.h"
+#include "OnlineSubsystemImpl.h"
 
-#ifndef ASH_SUBSYSTEM
-const FName ASH_SUBSYSTEM(TEXT("ASH"));
-#endif
+#include "CommonIncludes.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(OnlineSubsystemASH, Log, All);
 
@@ -63,6 +60,7 @@ public:
 	virtual bool Exec(class UWorld* InWorld, const TCHAR* Cmd, FOutputDevice& Ar) override;
 	virtual FText GetOnlineServiceName() const override;
 
+	virtual bool Tick(float DeltaTime) override;
 };
 
 

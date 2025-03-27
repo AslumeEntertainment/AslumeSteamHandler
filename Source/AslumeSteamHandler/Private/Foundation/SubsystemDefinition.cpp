@@ -1,10 +1,10 @@
 // Copyright (c) 2025, Aslume Entertainment. All rights reserved.
 
-#include "OnlineSubsystemImpl.h"
-
 #include "Foundation/SubsystemDefinition.h"
 
-#include "Foundation/Interfaces/OnlineSessionASH.h"
+#include "OnlineSubsystemImpl.h"
+
+#include "Interfaces/OnlineSessionASH.h"
 
 DEFINE_LOG_CATEGORY(OnlineSubsystemASH);
 
@@ -33,7 +33,7 @@ IOnlineSubsystemPtr FOnlineFactoryASH::CreateSubsystem(FName InstanceName)
 bool FOnlineSubsystemASH::Init()
 {
 	UE_LOG(LogTemp, Error, TEXT("-----------------------------------------------INITING THE ASHOSS-------------------------"));
-	SessionInterface = MakeShareable(new FOnlineSessionASH());
+	SessionInterface = MakeShareable(new FOnlineSessionASH(this));
 	return true;
 	
 
@@ -63,6 +63,23 @@ bool FOnlineSubsystemASH::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDevice&
 FText FOnlineSubsystemASH::GetOnlineServiceName() const
 {
 	return FText();
+}
+
+bool FOnlineSubsystemASH::Tick(float DeltaTime)
+{
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_FOnlineSubsystemSteam_Tick);
+
+	if (!FOnlineSubsystemImpl::Tick(DeltaTime))
+	{
+		return false;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("System Tick"));
+	if (SessionInterface.IsValid())
+	{
+		SessionInterface->Tick(DeltaTime);
+	}
+
+	return false;
 }
 //---------------------------------------Online Subsystem----------------------------------------
 

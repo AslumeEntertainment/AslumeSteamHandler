@@ -26,8 +26,10 @@ public class OnlineSubsystemASH : ModuleRules
 			new string[]
 			{
 				"Core",
+                "OnlineBase",
                 "OnlineSubsystem",
                 "OnlineSubsystemNull",
+                "Sockets",
                 //"OnlineSubsystemUtils",
                 "SteamHandlerLibrary",
 				"Projects"
