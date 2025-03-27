@@ -1,6 +1,6 @@
 // Copyright (c) 2025, Aslume Entertainment. All rights reserved.
 
-#include "AslumeSteamHandler.h"
+#include "OnlineSubsystemASH.h"
 
 #define LOCTEXT_NAMESPACE "AslumeSteamHandlerModule"
 
@@ -13,15 +13,14 @@
 
 #include "Steam/steam_api.h"
 
-#include "Foundation/OnlineSubsystemASH.h"
+#include "Foundation/SubsystemDefinition.h"
 
 DEFINE_LOG_CATEGORY(AslumeSteamHandler);
 
-
-void FAslumeSteamHandlerModule::StartupModule()
+void FOnlineSubsystemASHModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	
+
 	if (IsRunningGame() == false)
 	{
 		UE_LOG(AslumeSteamHandler, Warning, TEXT("Aslume Steam Handler will not load in editor. Only in standalone and packaged builds !"));
@@ -51,12 +50,13 @@ void FAslumeSteamHandlerModule::StartupModule()
 	}
 
 	UE_LOG(AslumeSteamHandler, Display, TEXT("Steam Handler Library Loaded Sucessfully"));
+	
 
 	ASHFactory = new FOnlineFactoryASH();
 
 	FOnlineSubsystemModule& OSS = FModuleManager::GetModuleChecked<FOnlineSubsystemModule>("OnlineSubsystem");
 	OSS.RegisterPlatformService(ASH_SUBSYSTEM, ASHFactory);
-	
+
 	FFileHelper::SaveStringToFile(TEXT("480"), TEXT("steam_appid.txt"));
 
 	SteamAPI_RestartAppIfNecessary(480);
@@ -71,7 +71,7 @@ void FAslumeSteamHandlerModule::StartupModule()
 	UE_LOG(AslumeSteamHandler, Display, TEXT("Steam Initialized Sucessfully"));
 }
 
-void FAslumeSteamHandlerModule::ShutdownModule()
+void FOnlineSubsystemASHModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
@@ -82,9 +82,13 @@ void FAslumeSteamHandlerModule::ShutdownModule()
 	
 	SteamAPI_Shutdown();
 
+	FOnlineSubsystemModule& OSS = FModuleManager::GetModuleChecked<FOnlineSubsystemModule>("OnlineSubsystem");
+	OSS.UnregisterPlatformService(ASH_SUBSYSTEM);
+
 	delete ASHFactory;
+	ASHFactory = nullptr;
 }
 
 #undef LOCTEXT_NAMESPACE
 	
-IMPLEMENT_MODULE(FAslumeSteamHandlerModule, AslumeSteamHandler)
+IMPLEMENT_MODULE(FOnlineSubsystemASHModule, AslumeSteamHandler)

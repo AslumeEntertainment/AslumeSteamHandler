@@ -10,7 +10,7 @@
  * 
  */
 UCLASS(Config = DefaultSteamSettings, defaultconfig, meta = (DisplayName = "Steam Settings"), Category = "SteamSettings")
-class ASLUMESTEAMHANDLER_API UDefaultSteamSettings : public UDeveloperSettings
+class ONLINESUBSYSTEMASH_API UDefaultSteamSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 	

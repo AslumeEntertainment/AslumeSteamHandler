@@ -2,7 +2,7 @@
 
 #include "OnlineSubsystemImpl.h"
 
-#include "Foundation/OnlineSubsystemASH.h"
+#include "Foundation/SubsystemDefinition.h"
 
 #include "Foundation/Interfaces/OnlineSessionASH.h"
 
@@ -71,7 +71,7 @@ FText FOnlineSubsystemASH::GetOnlineServiceName() const
 
 IOnlineSessionPtr FOnlineSubsystemASH::GetSessionInterface() const
 {
-	return IOnlineSessionPtr();
+	return SessionInterface;
 }
 
 IOnlineFriendsPtr FOnlineSubsystemASH::GetFriendsInterface() const
