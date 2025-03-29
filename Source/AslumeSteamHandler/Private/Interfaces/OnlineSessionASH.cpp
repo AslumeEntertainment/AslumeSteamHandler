@@ -5,7 +5,9 @@
 #include "Online/LANBeacon.h"
 #include "Online/OnlineBase.h"
 #include "OnlineSessionSettings.h"
+#include "SocketSubsystem.h"
 
+#include "Foundation/OnlineSubsystemASH.h"
 #include "Foundation/OnlineSubsystemASHTypes.h"
 #include "Misc/NboSerializerASH.h"
 
@@ -95,7 +97,6 @@ void FOnlineSessionASH::TickLanTasks(float DeltaTime)
 
 void FOnlineSessionASH::TickPendingInvites(float DeltaTime)
 {
-	UE_LOG(LogTemp, Display, TEXT("Interface Tickame"));
 	/*if (PendingInvite.PendingInviteType == ESteamSession::None)
 	{
 		return;
@@ -115,7 +116,7 @@ void FOnlineSessionASH::TickPendingInvites(float DeltaTime)
 
 		if (NewEvent)
 		{
-			UE_LOG_ONLINE_SESSION(Verbose, TEXT("%s"), *NewEvent->ToString());
+			UE_LOG(OnlineSessionASH, Display, TEXT("%s"), *NewEvent->ToString());
 			SteamSubsystem->QueueAsyncOutgoingItem(NewEvent);
 		}
 
@@ -203,6 +204,7 @@ bool FOnlineSessionASH::CreateSession(const FUniqueNetId& HostingPlayerId, FName
 
 uint32 FOnlineSessionASH::CreateLANSession(int32 HostingPlayerNum, FNamedOnlineSession* Session)
 {
+	UE_LOG(OnlineSessionASH, Display, TEXT("Creating LAN session..."));
 	check(Session);
 	uint32 Result = ONLINE_FAIL;
 
@@ -228,7 +230,7 @@ uint32 FOnlineSessionASH::CreateLANSession(int32 HostingPlayerNum, FNamedOnlineS
 	{
 		CurrentLanSession = new FLANSession();
 	}
-
+	
 	FOnValidQueryPacketDelegate QueryPacketDelegate = FOnValidQueryPacketDelegate::CreateRaw(this, &FOnlineSessionASH::OnValidQueryPacketReceived);
 	if (CurrentLanSession->Host(QueryPacketDelegate))
 	{
@@ -291,7 +293,7 @@ void FOnlineSessionASH::AppendSessionToPacket(FNboSerializeToBufferASH& Packet, 
 void FOnlineSessionASH::AppendSessionSettingsToPacket(FNboSerializeToBufferASH& Packet, FOnlineSessionSettings* SessionSettings)
 {
 #if DEBUG_LAN_BEACON
-	UE_LOG_ONLINE_SESSION(Verbose, TEXT("Sending session settings to client"));
+	UE_LOG(OnlineSessionASH, Display, TEXT("Sending session settings to client"));
 #endif 
 
 	// Members of the session settings class
@@ -320,6 +322,8 @@ void FOnlineSessionASH::AppendSessionSettingsToPacket(FNboSerializeToBufferASH& 
 		}
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("Appending %d settings to packet"), NumAdvertisedProperties);
+
 	// Add count of advertised keys and the data
 	((FNboSerializeToBuffer&)Packet) << (int32)NumAdvertisedProperties;
 	for (FSessionSettings::TConstIterator It(SessionSettings->Settings); It; ++It)
@@ -330,10 +334,126 @@ void FOnlineSessionASH::AppendSessionSettingsToPacket(FNboSerializeToBufferASH& 
 			((FNboSerializeToBuffer&)Packet) << It.Key();
 			Packet << Setting;
 #if DEBUG_LAN_BEACON
-			UE_LOG_ONLINE_SESSION(Verbose, TEXT("%s"), *Setting.ToString());
+			UE_LOG(OnlineSessionASH, Display, TEXT("%s"), *Setting.ToString());
 #endif
 		}
 	}
+}
+
+void FOnlineSessionASH::ReadSessionFromPacket(FNboSerializeFromBufferASH& Packet, FOnlineSession* Session)
+{
+#if DEBUG_LAN_BEACON
+	UE_LOG(OnlineSessionASH, Display, TEXT("Reading session information from server"));
+#endif
+
+	uint64 OwningUserId;
+	Packet >> OwningUserId
+		>> Session->OwningUserName
+		>> Session->NumOpenPrivateConnections
+		>> Session->NumOpenPublicConnections;
+
+	Session->OwningUserId = FUniqueNetIdASH::Create(OwningUserId);
+
+	// Allocate and read the connection data
+	FOnlineSessionInfoASH* SteamSessionInfo = new FOnlineSessionInfoASH(EASHSession::LANSession);
+	SteamSessionInfo->HostAddr = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
+	Packet >> *SteamSessionInfo;
+	Session->SessionInfo = MakeShareable(SteamSessionInfo);
+
+	// Read any per object data using the server object
+	ReadSettingsFromPacket(Packet, Session->SessionSettings);
+}
+
+void FOnlineSessionASH::ReadSettingsFromPacket(FNboSerializeFromBufferASH& Packet, FOnlineSessionSettings& SessionSettings)
+{
+#if DEBUG_LAN_BEACON
+	UE_LOG(OnlineSessionASH, Display, TEXT("Reading game settings from server"));
+#endif
+
+	// Clear out any old settings
+	SessionSettings.Settings.Empty();
+
+	// Members of the session settings class
+	Packet >> SessionSettings.NumPublicConnections
+		>> SessionSettings.NumPrivateConnections;
+	uint8 Read = 0;
+	// Read all the bools as bytes
+	Packet >> Read;
+	SessionSettings.bShouldAdvertise = !!Read;
+	Packet >> Read;
+	SessionSettings.bIsLANMatch = !!Read;
+	Packet >> Read;
+	SessionSettings.bIsDedicated = !!Read;
+	Packet >> Read;
+	SessionSettings.bUsesStats = !!Read;
+	Packet >> Read;
+	SessionSettings.bAllowJoinInProgress = !!Read;
+	Packet >> Read;
+	SessionSettings.bAllowInvites = !!Read;
+	Packet >> Read;
+	SessionSettings.bUsesPresence = !!Read;
+	Packet >> Read;
+	SessionSettings.bAllowJoinViaPresence = !!Read;
+	Packet >> Read;
+	SessionSettings.bAllowJoinViaPresenceFriendsOnly = !!Read;
+	Packet >> Read;
+	SessionSettings.bAntiCheatProtected = !!Read;
+
+	// BuildId
+	Packet >> SessionSettings.BuildUniqueId;
+
+	// Now read the contexts and properties from the settings class
+	int32 NumAdvertisedProperties = 0;
+	// First, read the number of advertised properties involved, so we can presize the array
+	Packet >> NumAdvertisedProperties;
+	UE_LOG(LogTemp, Warning, TEXT("Reading %d settings from packet"), NumAdvertisedProperties);
+	if (Packet.HasOverflow() == false)
+	{
+		FName Key;
+		// Now read each context individually
+		for (int32 Index = 0; Index < NumAdvertisedProperties && Packet.HasOverflow() == false; Index++)
+		{
+			FOnlineSessionSetting Setting;
+			Packet >> Key;
+			Packet >> Setting;
+			SessionSettings.Set(Key, Setting);
+
+#if DEBUG_LAN_BEACON
+			UE_LOG(OnlineSessionASH, Display, TEXT("%s"), *Setting->ToString());
+#endif
+		}
+	}
+
+	// If there was an overflow, treat the string settings/properties as broken
+	if (Packet.HasOverflow())
+	{
+		SessionSettings.Settings.Empty();
+		UE_LOG(OnlineSessionASH, Display, TEXT("Packet overflow detected in ReadGameSettingsFromPacket()"));
+	}
+}
+
+void FOnlineSessionASH::OnValidResponsePacketReceived(uint8* PacketData, int32 PacketLength)
+{
+	
+	// Create an object that we'll copy the data to
+	FOnlineSessionSettings NewServer;
+	if (CurrentSessionSearch.IsValid() == false)
+	{
+		UE_LOG(OnlineSessionASH, Warning, TEXT("Failed to create new online game settings object"));
+		return;
+	}
+	
+	// Add space in the search results array
+	FOnlineSessionSearchResult* NewResult = new (CurrentSessionSearch->SearchResults) FOnlineSessionSearchResult();
+	FOnlineSession* NewSession = &NewResult->Session;
+
+	// Prepare to read data from the packet
+	FNboSerializeFromBufferASH Packet(PacketData, PacketLength);
+
+	ReadSessionFromPacket(Packet, NewSession);
+
+	// NOTE: we don't notify until the timeout happens
+	
 }
 //---------------------------------------------------------------PACKET TRANSFER------------------------------------------
 
@@ -378,25 +498,154 @@ bool FOnlineSessionASH::CancelMatchmaking(const FUniqueNetId& SearchingPlayerId,
     return false;
 }
 
+
+//---------------------------------------------------------------FIND SESSIONS------------------------------------------
+
 bool FOnlineSessionASH::FindSessions(int32 SearchingPlayerNum, const TSharedRef<FOnlineSessionSearch>& SearchSettings)
 {
-    return false;
+	UE_LOG(LogTemp, Warning, TEXT("____________________________________________FIND SESSION___________________________"));
+	uint32 Result = ONLINE_FAIL;
+
+	// Dedicated servers shouldn't be matchmaking. 
+	if (Subsystem->IsDedicated())
+	{
+		UE_LOG(OnlineSessionASH, Warning, TEXT("Ignoring game search request  - Dedicated servers shouldn't be matchmaking"));
+		SearchSettings->SearchState = EOnlineAsyncTaskState::Failed;
+		TriggerOnFindSessionsCompleteDelegates(false);
+		return false;
+	}
+
+	// Don't start another search while one is in progress
+	if (CurrentSessionSearch.IsValid() || SearchSettings->SearchState == EOnlineAsyncTaskState::InProgress)
+	{
+		UE_LOG(OnlineSessionASH, Warning, TEXT("Ignoring game search request while one is pending"));
+		return true;
+	}
+
+	// Free up previous results
+	SearchSettings->SearchResults.Empty();
+
+	// Copy the search pointer so we can keep it around
+	CurrentSessionSearch = SearchSettings;
+
+	// Check if its a LAN query
+	if (SearchSettings->bIsLanQuery == false)
+	{
+		UE_LOG(OnlineSessionASH, Display, TEXT("Running Internet session search query..."));
+		//Result = FindInternetSession(SearchSettings);
+	}
+	else
+	{
+		Result = FindLANSession(SearchSettings);
+	}
+
+	if (Result == ONLINE_IO_PENDING)
+	{
+		SearchSettings->SearchState = EOnlineAsyncTaskState::InProgress;
+	}
+
+	return Result == ONLINE_SUCCESS || Result == ONLINE_IO_PENDING;
 }
 
 bool FOnlineSessionASH::FindSessions(const FUniqueNetId& SearchingPlayerId, const TSharedRef<FOnlineSessionSearch>& SearchSettings)
 {
-    return false;
+	// @todo: use proper SearchingPlayerId
+	return FindSessions(0, SearchSettings);
 }
 
 bool FOnlineSessionASH::FindSessionById(const FUniqueNetId& SearchingUserId, const FUniqueNetId& SessionId, const FUniqueNetId& FriendId, const FOnSingleSessionResultCompleteDelegate& CompletionDelegate)
 {
-    return false;
+	FOnlineSessionSearchResult EmptyResult;
+	UE_LOG(OnlineSessionASH, Warning, TEXT("Ignoring game search request by ID, because it doesnt make sence with Steam's system and is not implemented"));
+	CompletionDelegate.ExecuteIfBound(0, false, EmptyResult);
+	return true;
+}
+
+uint32 FOnlineSessionASH::FindLANSession(const TSharedRef<FOnlineSessionSearch>& SearchSettings)
+{
+	UE_LOG(OnlineSessionASH, Display, TEXT("Running LAN session search query..."));
+	uint32 Return = ONLINE_IO_PENDING;
+
+	if (!CurrentLanSession)
+	{
+		CurrentLanSession = new FLANSession();
+	}
+
+	// Recreate the unique identifier for this client
+	GenerateNonce((uint8*)&CurrentLanSession->LanNonce, 8);
+
+	FOnValidResponsePacketDelegate ResponseDelegate = FOnValidResponsePacketDelegate::CreateRaw(this, &FOnlineSessionASH::OnValidResponsePacketReceived);
+	FOnSearchingTimeoutDelegate TimeoutDelegate = FOnSearchingTimeoutDelegate::CreateRaw(this, &FOnlineSessionASH::OnLANSearchTimeout);
+
+	FNboSerializeToBufferASH Packet(LAN_BEACON_MAX_PACKET_SIZE);
+	CurrentLanSession->CreateClientQueryPacket(Packet, CurrentLanSession->LanNonce);
+	if (Packet.HasOverflow() || CurrentLanSession->Search(Packet, ResponseDelegate, TimeoutDelegate) == false)
+	{
+		Return = ONLINE_FAIL;
+		delete CurrentLanSession;
+		CurrentLanSession = nullptr;
+
+		CurrentSessionSearch->SearchState = EOnlineAsyncTaskState::Failed;
+
+		// Just trigger the delegate as having failed
+		TriggerOnFindSessionsCompleteDelegates(false);
+	}
+
+	return Return;
+}
+
+void FOnlineSessionASH::OnLANSearchTimeout()
+{
+	// See if there were any sessions that were marked as hosting before the search started
+	// 
+	// I think the comented secsion is entirely fu***ng useless
+
+	/*bool bWasHosting = false;
+	{
+		FScopeLock ScopeLock(&SessionLock);
+		bWasHosting = CurrentSession->SessionSettings.bShouldAdvertise && 
+					  CurrentSession->SessionSettings.bIsLANMatch && 
+					  Subsystem->IsServer();		
+	}
+
+	if (bWasHosting)
+	{
+		FOnValidQueryPacketDelegate QueryPacketDelegate = FOnValidQueryPacketDelegate::CreateRaw(this, &FOnlineSessionASH::OnValidQueryPacketReceived);
+		// Maintain lan beacon if there was a session that was marked as hosting
+		if (CurrentLanSession->Host(QueryPacketDelegate))
+		{
+			UE_LOG(OnlineSessionASH, Warning, TEXT("Failed to restart hosted LAN session after search completion"));
+		}
+	}
+	else
+	{
+		// Stop future timeouts since we aren't searching any more
+		CurrentLanSession->StopLANSession();
+	}*/
+
+	if (CurrentSessionSearch.IsValid())
+	{
+		if (CurrentSessionSearch->SearchResults.Num() > 0)
+		{
+			// Allow game code to sort the servers
+			CurrentSessionSearch->SortSearchResults();
+		}
+		CurrentSessionSearch->SearchState = EOnlineAsyncTaskState::Done; //setting the given search result
+
+		CurrentSessionSearch = nullptr; //setting the local pointer to the given result as null in order to evade errors
+	}
+
+	// Trigger the delegate as complete
+	TriggerOnFindSessionsCompleteDelegates(true);
 }
 
 bool FOnlineSessionASH::CancelFindSessions()
 {
     return false;
 }
+//---------------------------------------------------------------FIND SESSIONS------------------------------------------
+
+
 
 bool FOnlineSessionASH::PingSearchResults(const FOnlineSessionSearchResult& SearchResult)
 {

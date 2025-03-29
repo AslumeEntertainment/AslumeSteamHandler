@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class OnlineSubsystemASH : ModuleRules
+public class AslumeSteamHandlerModule : ModuleRules
 {
-	public OnlineSubsystemASH(ReadOnlyTargetRules Target) : base(Target)
+	public AslumeSteamHandlerModule(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
@@ -28,9 +28,7 @@ public class OnlineSubsystemASH : ModuleRules
 				"Core",
                 "OnlineBase",
                 "OnlineSubsystem",
-                "OnlineSubsystemNull",
                 "Sockets",
-                //"OnlineSubsystemUtils",
                 "SteamHandlerLibrary",
 				"Projects"
 				// ... add other public dependencies that you statically link with here ...

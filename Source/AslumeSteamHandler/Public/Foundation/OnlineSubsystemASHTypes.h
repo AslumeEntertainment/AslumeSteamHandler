@@ -4,7 +4,8 @@
 
 //#include "OnlineSubsystemNames.h"
 //#include "OnlineSubsystemSteamPrivate.h" // IWYU pragma: keep
-//#include "IPAddress.h"
+#include "IPAddress.h"
+#include "Engine/EngineBaseTypes.h"
 //#include "OnlineSubsystemSteamPackage.h"
 
 #include "CommonIncludes.h"

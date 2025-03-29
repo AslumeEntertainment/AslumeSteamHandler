@@ -6,6 +6,8 @@
 
 #include "CommonIncludes.h"
 
+#define STEAMAPPIDFILENAME TEXT("steam_appid.txt")
+
 DECLARE_LOG_CATEGORY_EXTERN(OnlineSubsystemASH, Log, All);
 
 //typedef TSharedPtr<class FOnlineIdentitySteam, ESPMode::ThreadSafe> FOnlineIdentitySteamPtr;
@@ -17,6 +19,20 @@ class FOnlineSubsystemASH : public FOnlineSubsystemImpl
 {
 private:
 	FOnlineSessionASHPtr SessionInterface = nullptr;
+
+	bool bSteamworksClientInitialized;
+	bool bSteamworksGameServerInitialized;
+
+	bool bUsingSteamNetworking;
+
+	uint32 SteamAppID;
+	int32 GameServerGamePort;
+	int32 GameServerQueryPort;
+
+	bool InitSteamworksClient(bool bRelaunchInSteam, int32 SteamAppId);
+	bool InitSteamworksServer();
+
+	void ShutdownSteamworks();
 
 public:
 
@@ -61,6 +77,64 @@ public:
 	virtual FText GetOnlineServiceName() const override;
 
 	virtual bool Tick(float DeltaTime) override;
+
+	/**
+ * Whether or not the Steam Client interfaces are available; these interfaces are only available, if the Steam Client program is running
+ * NOTE: These interfaces are made unavailable, when running a dedicated server
+ *
+ * @return	Whether or not the Steam Client interfaces are available
+ */
+	inline bool IsSteamClientAvailable()
+	{
+		return bSteamworksClientInitialized;
+	}
+
+	/**
+	 * Whether or not the Steam game server interfaces are available; these interfaces are always available, so long as they were initialized correctly
+	 * NOTE: The Steam Client does not need to be running for the game server interfaces to initialize
+	 * NOTE: These interfaces are made unavailable, when not running a server
+	 *
+	 * @return	Whether or not the Steam game server interfaces are available
+	 */
+	inline bool IsSteamServerAvailable()
+	{
+		// @todo Steam - add some logic to detect somehow we intended to be a "Steam client" but failed that part
+		// yet managed to still initialize the game server aspects of Steam
+		return bSteamworksGameServerInitialized;
+	}
+
+	/**
+	 * @return the steam app id for this app
+	 */
+	inline uint32 GetSteamAppId() const
+	{
+		return SteamAppID;
+	}
+
+	/**
+	 *	@return the port the game has registered for play
+	 */
+	inline int32 GetGameServerGamePort() const
+	{
+		return GameServerGamePort;
+	}
+
+	/**
+	 *	@return the port the game has registered for incoming server queries
+	 */
+	inline int32 GetGameServerQueryPort() const
+	{
+		return GameServerQueryPort;
+	}
+
+	/**
+	 *	@return if this subsystem is using SteamNetworking functionality
+	 *			or another network layer like SteamSockets
+	 */
+	inline bool IsUsingSteamNetworking() const
+	{
+		return bUsingSteamNetworking;
+	}
 };
 
 

@@ -1,6 +1,6 @@
 // Copyright (c) 2025, Aslume Entertainment. All rights reserved.
 
-#include "OnlineSubsystemASH.h"
+#include "AslumeSteamHandlerModule.h"
 
 #define LOCTEXT_NAMESPACE "AslumeSteamHandlerModule"
 
@@ -11,11 +11,11 @@
 #include "Misc/Paths.h"
 #include "HAL/PlatformProcess.h"
 
-#include "Foundation/SubsystemDefinition.h"
+#include "Foundation/OnlineSubsystemASH.h"
 
 DEFINE_LOG_CATEGORY(AslumeSteamHandler);
 
-void FOnlineSubsystemASHModule::StartupModule()
+void FAslumeSteamHandlerModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 
@@ -55,7 +55,7 @@ void FOnlineSubsystemASHModule::StartupModule()
 	FOnlineSubsystemModule& OSS = FModuleManager::GetModuleChecked<FOnlineSubsystemModule>("OnlineSubsystem");
 	OSS.RegisterPlatformService(ASH_SUBSYSTEM, ASHFactory);
 
-	FFileHelper::SaveStringToFile(TEXT("480"), TEXT("steam_appid.txt"));
+	/*FFileHelper::SaveStringToFile(TEXT("480"), TEXT("steam_appid.txt"));
 
 	SteamAPI_RestartAppIfNecessary(480);
 
@@ -66,10 +66,10 @@ void FOnlineSubsystemASHModule::StartupModule()
 		return;
 	}
 
-	UE_LOG(AslumeSteamHandler, Display, TEXT("Steam Initialized Sucessfully"));
+	UE_LOG(AslumeSteamHandler, Display, TEXT("Steam Initialized Sucessfully"));*/
 }
 
-void FOnlineSubsystemASHModule::ShutdownModule()
+void FAslumeSteamHandlerModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
@@ -78,7 +78,7 @@ void FOnlineSubsystemASHModule::ShutdownModule()
 		return;
 	}
 	
-	SteamAPI_Shutdown();
+	//SteamAPI_Shutdown();
 
 	FOnlineSubsystemModule& OSS = FModuleManager::GetModuleChecked<FOnlineSubsystemModule>("OnlineSubsystem");
 	OSS.UnregisterPlatformService(ASH_SUBSYSTEM);
@@ -89,4 +89,4 @@ void FOnlineSubsystemASHModule::ShutdownModule()
 
 #undef LOCTEXT_NAMESPACE
 	
-IMPLEMENT_MODULE(FOnlineSubsystemASHModule, AslumeSteamHandler)
+IMPLEMENT_MODULE(FAslumeSteamHandlerModule, AslumeSteamHandler)

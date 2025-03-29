@@ -3,7 +3,7 @@
 #pragma once
 
 #ifndef ASH_SUBSYSTEM
-const FName ASH_SUBSYSTEM(TEXT("ASH"));
+#define ASH_SUBSYSTEM "ASH"
 #endif
 
 #include "Steam/steam_api.h"
