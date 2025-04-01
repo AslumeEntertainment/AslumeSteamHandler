@@ -9,7 +9,7 @@ class FOnlineFactoryASH;
 
 DECLARE_LOG_CATEGORY_EXTERN(AslumeSteamHandler, Log, All);
 
-class FAslumeSteamHandlerModule : public IModuleInterface
+class FOnlineSubsystemASHModule : public IModuleInterface
 {
 
 

@@ -5,6 +5,10 @@
 #include "OnlineSubsystemImpl.h"
 #include "Interfaces/IPluginManager.h"
 #include "SocketSubsystem.h"
+#include "GenericPlatform/GenericPlatformFile.h"
+#include "Misc/ConfigCacheIni.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 #include "Steam/steam_api.h"
 #include "Steam/steam_gameserver.h"

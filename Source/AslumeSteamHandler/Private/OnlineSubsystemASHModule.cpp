@@ -1,8 +1,8 @@
 // Copyright (c) 2025, Aslume Entertainment. All rights reserved.
 
-#include "AslumeSteamHandlerModule.h"
+#include "OnlineSubsystemASHModule.h"
 
-#define LOCTEXT_NAMESPACE "AslumeSteamHandlerModule"
+#define LOCTEXT_NAMESPACE "AslumeSteamHandler"
 
 #include "Misc/FileHelper.h"
 #include "Misc/MessageDialog.h"
@@ -15,7 +15,9 @@
 
 DEFINE_LOG_CATEGORY(AslumeSteamHandler);
 
-void FAslumeSteamHandlerModule::StartupModule()
+IMPLEMENT_MODULE(FOnlineSubsystemASHModule, OnlineSubsystemASH)
+
+void FOnlineSubsystemASHModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 
@@ -69,7 +71,7 @@ void FAslumeSteamHandlerModule::StartupModule()
 	UE_LOG(AslumeSteamHandler, Display, TEXT("Steam Initialized Sucessfully"));*/
 }
 
-void FAslumeSteamHandlerModule::ShutdownModule()
+void FOnlineSubsystemASHModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
@@ -88,5 +90,3 @@ void FAslumeSteamHandlerModule::ShutdownModule()
 }
 
 #undef LOCTEXT_NAMESPACE
-	
-IMPLEMENT_MODULE(FAslumeSteamHandlerModule, AslumeSteamHandler)

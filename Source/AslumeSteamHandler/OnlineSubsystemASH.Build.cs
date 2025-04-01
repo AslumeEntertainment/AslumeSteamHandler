@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class AslumeSteamHandlerModule : ModuleRules
+public class OnlineSubsystemASH : ModuleRules
 {
-	public AslumeSteamHandlerModule(ReadOnlyTargetRules Target) : base(Target)
+	public OnlineSubsystemASH(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 

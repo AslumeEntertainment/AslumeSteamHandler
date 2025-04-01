@@ -6,6 +6,7 @@
 #include "Online/OnlineBase.h"
 #include "OnlineSessionSettings.h"
 #include "SocketSubsystem.h"
+#include "UObject/CoreNet.h"
 
 #include "Foundation/OnlineSubsystemASH.h"
 #include "Foundation/OnlineSubsystemASHTypes.h"
