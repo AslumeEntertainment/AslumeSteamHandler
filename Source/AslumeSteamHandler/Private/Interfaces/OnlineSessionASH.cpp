@@ -14,7 +14,7 @@
 
 DEFINE_LOG_CATEGORY(OnlineSessionASH);
 
-
+/*DEBUG ONLY - TO BE DELETED*/
 void CheckSettings(const FOnlineSessionSettings& Main, const FOnlineSessionSettings& Other)
 {
 	UE_LOG(LogTemp, Warning, TEXT("NumPublicConnections             - Main[%d] - Other[%d]"),Main.NumPublicConnections, Other.NumPublicConnections);
@@ -33,7 +33,9 @@ void CheckSettings(const FOnlineSessionSettings& Main, const FOnlineSessionSetti
 	UE_LOG(LogTemp, Warning, TEXT("bUseLobbiesVoiceChatIfAvailable  - Main[%d] - Other[%d]"),Main.bUseLobbiesVoiceChatIfAvailable, Other.bUseLobbiesVoiceChatIfAvailable);
 }
 
-//---------------------------------------------------------------INITIALIZATION------------------------------------------
+
+
+//----------------------------------------------------------------INITIALIZATION-----------------------------------------------------
 
 FNamedOnlineSession* FOnlineSessionASH::AddNamedSession(FName SessionName, const FOnlineSessionSettings& SessionSettings)
 {
@@ -87,11 +89,13 @@ EOnlineSessionState::Type FOnlineSessionASH::GetSessionState(FName SessionName) 
 {
     return EOnlineSessionState::Type();
 }
-//---------------------------------------------------------------INITIALIZATION------------------------------------------
+//----------------------------------------------------------------INITIALIZATION-----------------------------------------------------
 
 
 
-//---------------------------------------------------------------PERIODIC TASKS------------------------------------------
+
+
+//----------------------------------------------------------------PERIODIC TASKS-----------------------------------------------------
 
 void FOnlineSessionASH::Tick(float DeltaTime)
 {
@@ -138,11 +142,13 @@ void FOnlineSessionASH::TickPendingInvites(float DeltaTime)
 	}
 	*/
 }
-//---------------------------------------------------------------PERIODIC TASKS------------------------------------------
+//----------------------------------------------------------------PERIODIC TASKS-----------------------------------------------------
 
 
 
-//---------------------------------------------------------------CREATING SESSION------------------------------------------
+
+
+//----------------------------------------------------------------CREATING SESSION---------------------------------------------------
 bool FOnlineSessionASH::CreateSession(int32 HostingPlayerNum, FName SessionName, const FOnlineSessionSettings& NewSessionSettings)
 {
     UE_LOG(LogTemp, Error, TEXT("____________________________________________CREATE SESSION___________________________"));
@@ -219,7 +225,7 @@ uint32 FOnlineSessionASH::CreateLANSession(int32 HostingPlayerNum, FNamedOnlineS
 {
 	UE_LOG(OnlineSessionASH, Display, TEXT("Creating LAN session..."));
 	check(Session);
-	uint32 Result = ONLINE_FAIL;
+	uint32 Result = ONLINE_SUCCESS;
 
 	// Setup the host session info
 	FOnlineSessionInfoASH* NewSessionInfo = new FOnlineSessionInfoASH(EASHSession::LANSession);
@@ -235,7 +241,7 @@ uint32 FOnlineSessionASH::CreateLANSession(int32 HostingPlayerNum, FNamedOnlineS
 	// Don't create the LAN beacon if advertising is off
 	if (!Session->SessionSettings.bShouldAdvertise)
 	{
-		UE_LOG(OnlineSessionASH, Warning, TEXT("Session [%s] wont host properly witout advertisement"), *Session->SessionName.ToString());
+		UE_LOG(OnlineSessionASH, Warning, TEXT("CreateLANSession - Session [%s] wont be discoverable witout advertisement"), *Session->SessionName.ToString());
 		return Result;
 	}
 
@@ -245,19 +251,20 @@ uint32 FOnlineSessionASH::CreateLANSession(int32 HostingPlayerNum, FNamedOnlineS
 	}
 	
 	FOnValidQueryPacketDelegate QueryPacketDelegate = FOnValidQueryPacketDelegate::CreateRaw(this, &FOnlineSessionASH::OnValidQueryPacketReceived);
-	if (CurrentLanSession->Host(QueryPacketDelegate))
+	if (!CurrentLanSession->Host(QueryPacketDelegate))
 	{
-		Result = ONLINE_SUCCESS;
+		Result = ONLINE_FAIL;
 	}
 
 	return Result;
 }
-//---------------------------------------------------------------CREATING SESSION------------------------------------------
+//----------------------------------------------------------------CREATING SESSION---------------------------------------------------
 
 
 
 
-//---------------------------------------------------------------PACKET TRANSFER------------------------------------------
+
+//----------------------------------------------------------------PACKET TRANSFER----------------------------------------------------
 
 void FOnlineSessionASH::OnValidQueryPacketReceived(uint8* PacketData, int32 PacketLength, uint64 ClientNonce)
 {
@@ -472,8 +479,13 @@ void FOnlineSessionASH::OnValidResponsePacketReceived(uint8* PacketData, int32 P
 	// NOTE: we don't notify until the timeout happens
 	
 }
-//---------------------------------------------------------------PACKET TRANSFER------------------------------------------
+//----------------------------------------------------------------PACKET TRANSFER----------------------------------------------------
 
+
+
+
+
+//----------------------------------------------------------------SESSION MODIFICATIONS----------------------------------------------
 
 bool FOnlineSessionASH::StartSession(FName SessionName)
 {
@@ -489,34 +501,54 @@ bool FOnlineSessionASH::EndSession(FName SessionName)
 {
     return false;
 }
+//----------------------------------------------------------------SESSION MODIFICATIONS----------------------------------------------
+
+
+
+
+
+//----------------------------------------------------------------DESTROY SESSION----------------------------------------------------
+
 
 bool FOnlineSessionASH::DestroySession(FName SessionName, const FOnDestroySessionCompleteDelegate& CompletionDelegate)
 {
     return false;
 }
+//----------------------------------------------------------------DESTROY SESSION----------------------------------------------------
 
-bool FOnlineSessionASH::IsPlayerInSession(FName SessionName, const FUniqueNetId& UniqueId)
-{
-    return false;
-}
+
+
+
+
+//----------------------------------------------------------------MATCHMAKING--------------------------------------------------------
 
 bool FOnlineSessionASH::StartMatchmaking(const TArray<FUniqueNetIdRef>& LocalPlayers, FName SessionName, const FOnlineSessionSettings& NewSessionSettings, TSharedRef<FOnlineSessionSearch>& SearchSettings)
 {
-    return false;
+	UE_LOG(OnlineSessionASH, Warning, TEXT("StartMatchmaking is not supported on this platform. Use FindSessions or FindSessionById."));
+	TriggerOnMatchmakingCompleteDelegates(SessionName, false);
+	return false;
 }
 
 bool FOnlineSessionASH::CancelMatchmaking(int32 SearchingPlayerNum, FName SessionName)
 {
+	UE_LOG(OnlineSessionASH, Warning, TEXT("CancelMatchmaking is not supported on this platform. Use CancelFindSessions."));
+	TriggerOnCancelMatchmakingCompleteDelegates(SessionName, false);
     return false;
 }
 
 bool FOnlineSessionASH::CancelMatchmaking(const FUniqueNetId& SearchingPlayerId, FName SessionName)
 {
+	UE_LOG(OnlineSessionASH, Warning, TEXT("CancelMatchmaking is not supported on this platform. Use CancelFindSessions."));
+	TriggerOnCancelMatchmakingCompleteDelegates(SessionName, false);
     return false;
 }
+//----------------------------------------------------------------MATCHMAKING--------------------------------------------------------
 
 
-//---------------------------------------------------------------FIND SESSIONS------------------------------------------
+
+
+
+//----------------------------------------------------------------FIND SESSIONS------------------------------------------------------
 
 bool FOnlineSessionASH::FindSessions(int32 SearchingPlayerNum, const TSharedRef<FOnlineSessionSearch>& SearchSettings)
 {
@@ -660,17 +692,13 @@ bool FOnlineSessionASH::CancelFindSessions()
 {
     return false;
 }
-//---------------------------------------------------------------FIND SESSIONS------------------------------------------
+//----------------------------------------------------------------FIND SESSIONS------------------------------------------------------
 
 
 
-bool FOnlineSessionASH::PingSearchResults(const FOnlineSessionSearchResult& SearchResult)
-{
-    return false;
-}
 
 
-//---------------------------------------------------------------JOIN SESSIONS------------------------------------------
+//----------------------------------------------------------------JOIN SESSIONS------------------------------------------------------
 
 bool FOnlineSessionASH::JoinSession(int32 LocalUserNum, FName SessionName, const FOnlineSessionSearchResult& DesiredSession)
 {
@@ -763,8 +791,13 @@ uint32 FOnlineSessionASH::JoinLANSession(int32 PlayerNum, FNamedOnlineSession* S
 
 	return Result;
 }
-//---------------------------------------------------------------JOIN SESSIONS------------------------------------------
+//----------------------------------------------------------------JOIN SESSIONS------------------------------------------------------
 
+
+
+
+
+//----------------------------------------------------------------FRIEND SESSIONS----------------------------------------------------
 
 bool FOnlineSessionASH::FindFriendSession(int32 LocalUserNum, const FUniqueNetId& Friend)
 {
@@ -780,6 +813,13 @@ bool FOnlineSessionASH::FindFriendSession(const FUniqueNetId& LocalUserId, const
 {
     return false;
 }
+//----------------------------------------------------------------FRIEND SESSIONS----------------------------------------------------
+
+
+
+
+
+//----------------------------------------------------------------INVITATION---------------------------------------------------------
 
 bool FOnlineSessionASH::SendSessionInviteToFriend(int32 LocalUserNum, FName SessionName, const FUniqueNetId& Friend)
 {
@@ -800,6 +840,47 @@ bool FOnlineSessionASH::SendSessionInviteToFriends(const FUniqueNetId& LocalUser
 {
     return false;
 }
+//----------------------------------------------------------------INVITATION---------------------------------------------------------
+
+
+
+
+
+//----------------------------------------------------------------REGISTRATION-------------------------------------------------------
+bool FOnlineSessionASH::RegisterPlayer(FName SessionName, const FUniqueNetId& PlayerId, bool bWasInvited)
+{
+    return false;
+}
+
+bool FOnlineSessionASH::RegisterPlayers(FName SessionName, const TArray<FUniqueNetIdRef>& Players, bool bWasInvited)
+{
+    return false;
+}
+
+bool FOnlineSessionASH::UnregisterPlayer(FName SessionName, const FUniqueNetId& PlayerId)
+{
+    return false;
+}
+
+bool FOnlineSessionASH::UnregisterPlayers(FName SessionName, const TArray<FUniqueNetIdRef>& Players)
+{
+    return false;
+}
+
+void FOnlineSessionASH::RegisterLocalPlayer(const FUniqueNetId& PlayerId, FName SessionName, const FOnRegisterLocalPlayerCompleteDelegate& Delegate)
+{
+}
+
+void FOnlineSessionASH::UnregisterLocalPlayer(const FUniqueNetId& PlayerId, FName SessionName, const FOnUnregisterLocalPlayerCompleteDelegate& Delegate)
+{
+}
+//----------------------------------------------------------------REGISTRATION-------------------------------------------------------
+
+
+
+
+
+//----------------------------------------------------------------INFO---------------------------------------------------------------
 
 /** Get a resolved connection string from a session info */
 static bool GetConnectStringFromSessionInfo(TSharedPtr<FOnlineSessionInfoASH>& SessionInfo, FString& ConnectInfo, int32 PortOverride = 0)
@@ -911,40 +992,23 @@ bool FOnlineSessionASH::GetResolvedConnectString(const FOnlineSessionSearchResul
 
 FOnlineSessionSettings* FOnlineSessionASH::GetSessionSettings(FName SessionName)
 {
-    return nullptr;
+	FNamedOnlineSession* Session = GetNamedSession(SessionName);
+	if (Session)
+	{
+		return &Session->SessionSettings;
+	}
+	return nullptr;
 }
 
-bool FOnlineSessionASH::RegisterPlayer(FName SessionName, const FUniqueNetId& PlayerId, bool bWasInvited)
+bool FOnlineSessionASH::IsPlayerInSession(FName SessionName, const FUniqueNetId& UniqueId)
 {
-    return false;
-}
-
-bool FOnlineSessionASH::RegisterPlayers(FName SessionName, const TArray<FUniqueNetIdRef>& Players, bool bWasInvited)
-{
-    return false;
-}
-
-bool FOnlineSessionASH::UnregisterPlayer(FName SessionName, const FUniqueNetId& PlayerId)
-{
-    return false;
-}
-
-bool FOnlineSessionASH::UnregisterPlayers(FName SessionName, const TArray<FUniqueNetIdRef>& Players)
-{
-    return false;
-}
-
-void FOnlineSessionASH::RegisterLocalPlayer(const FUniqueNetId& PlayerId, FName SessionName, const FOnRegisterLocalPlayerCompleteDelegate& Delegate)
-{
-}
-
-void FOnlineSessionASH::UnregisterLocalPlayer(const FUniqueNetId& PlayerId, FName SessionName, const FOnUnregisterLocalPlayerCompleteDelegate& Delegate)
-{
+	return false;
 }
 
 int32 FOnlineSessionASH::GetNumSessions()
 {
-    return int32();
+	FScopeLock ScopeLock(&SessionLock);
+	return ActiveSessions.Num();
 }
 
 void FOnlineSessionASH::DumpSessionState()
@@ -968,3 +1032,10 @@ FString FOnlineSessionASH::GetDedicatedServerName() const
 
 	return ServerName;
 }
+
+bool FOnlineSessionASH::PingSearchResults(const FOnlineSessionSearchResult& SearchResult)
+{
+	return false;
+}
+
+//----------------------------------------------------------------INFO--------------------------------------------------------------
