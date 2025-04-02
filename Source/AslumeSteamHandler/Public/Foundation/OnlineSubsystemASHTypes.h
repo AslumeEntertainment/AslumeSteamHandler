@@ -287,10 +287,7 @@ private:
 
 	/** Type of session this is, affects interpretation of id below *///must be private but friends dont work properly
 	EASHSession::Type SessionType;
-	/** The Steam P2P address that the host is listening on (valid for GameServer/Lobby) */
-	TSharedPtr<class FInternetAddr> ASHP2PAddr;
-	/** How this session should be connected to */
-	FASHConnectionMethod ConnectionMethod;
+
 
 protected:
 
@@ -304,6 +301,10 @@ public:
 	FUniqueNetIdASHRef SessionId;
 	/** The ip & port that the host is listening on (valid for LAN/GameServer) *///must be private but friends dont work properly
 	TSharedPtr<class FInternetAddr> HostAddr;
+	/** The Steam P2P address that the host is listening on (valid for GameServer/Lobby) */
+	TSharedPtr<class FInternetAddr> ASHP2PAddr;
+	/** How this session should be connected to */
+	FASHConnectionMethod ConnectionMethod;
 
 	virtual ~FOnlineSessionInfoASH() {}
 

@@ -3,11 +3,11 @@
 #pragma once 
 
 #include "Interfaces/OnlineSessionInterface.h"
-//#include "Online/LANBeacon.h"
+#include "OnlineSessionSettings.h"
 
-class FNamedOnlineSession;
+//class FNamedOnlineSession;
 class FOnlineSubsystemASH;
-class FOnlineSession;
+//class FOnlineSession;
 class FLANSession;
 class FNboSerializeToBufferASH;
 class FNboSerializeFromBufferASH;
@@ -27,7 +27,7 @@ private:
 
 	FOnlineSubsystemASH* Subsystem = nullptr;
 
-	FNamedOnlineSession* CurrentSession = nullptr;
+	TArray<FNamedOnlineSession> ActiveSessions;
 	FLANSession* CurrentLanSession =  nullptr;
 
 	TSharedPtr<FOnlineSessionSearch> CurrentSessionSearch;
@@ -53,6 +53,8 @@ protected:
 
 	uint32 FindLANSession(const TSharedRef<FOnlineSessionSearch>& SearchSettings);
 	void OnLANSearchTimeout();
+
+	uint32 JoinLANSession(int32 PlayerNum, FNamedOnlineSession* Session, const FOnlineSession* SearchSession);
 
 	void RemoveNamedSession(FName SessionName) override;
 

@@ -7,19 +7,19 @@
 
 FOnlineSessionInfoASH::FOnlineSessionInfoASH(EASHSession::Type InSessionType) :
 	SessionType(InSessionType),
-	ASHP2PAddr(nullptr),
-	ConnectionMethod((InSessionType == EASHSession::LANSession) ? FASHConnectionMethod::Direct : FASHConnectionMethod::None),
 	SessionId(FUniqueNetIdASH::Create((uint64)0)),
-	HostAddr(nullptr)
+	HostAddr(nullptr),
+	ASHP2PAddr(nullptr),
+	ConnectionMethod((InSessionType == EASHSession::LANSession) ? FASHConnectionMethod::Direct : FASHConnectionMethod::None)
 {
 }
 
 FOnlineSessionInfoASH::FOnlineSessionInfoASH(EASHSession::Type InSessionType, const FUniqueNetIdASH& InSessionId) :
 	SessionType(InSessionType),
-	ASHP2PAddr(nullptr),
-	ConnectionMethod(FASHConnectionMethod::None),
 	SessionId(InSessionId.AsShared()),
-	HostAddr(nullptr)
+	HostAddr(nullptr),
+	ASHP2PAddr(nullptr),
+	ConnectionMethod(FASHConnectionMethod::None)
 {
 }
 
@@ -43,4 +43,40 @@ void FOnlineSessionInfoASH::InitLAN()
 	HostAddr->SetPort(FURL::UrlConfig.DefaultPort);
 
 	Init();
+}
+
+FString LexToString(const FASHConnectionMethod Method)
+{
+	switch (Method)
+	{
+	default:
+	case FASHConnectionMethod::None:
+		return TEXT("None");
+	case FASHConnectionMethod::Direct:
+		return TEXT("Direct");
+	case FASHConnectionMethod::P2P:
+		return TEXT("P2P");
+	case FASHConnectionMethod::PartnerHosted:
+		return TEXT("PartnerHosted");
+	}
+}
+
+FASHConnectionMethod ToConnectionMethod(const FString& InString)
+{
+	if (InString == TEXT("Direct"))
+	{
+		return FASHConnectionMethod::Direct;
+	}
+	else if (InString == TEXT("P2P"))
+	{
+		return FASHConnectionMethod::P2P;
+	}
+	else if (InString == TEXT("PartnerHosted"))
+	{
+		return FASHConnectionMethod::PartnerHosted;
+	}
+	else
+	{
+		return FASHConnectionMethod::None;
+	}
 }

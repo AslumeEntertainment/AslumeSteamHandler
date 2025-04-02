@@ -38,15 +38,13 @@ void CheckSettings(const FOnlineSessionSettings& Main, const FOnlineSessionSetti
 FNamedOnlineSession* FOnlineSessionASH::AddNamedSession(FName SessionName, const FOnlineSessionSettings& SessionSettings)
 {
 	FScopeLock ScopeLock(&SessionLock);
-	CurrentSession = new FNamedOnlineSession(SessionName, SessionSettings);
-    return CurrentSession;
+	return &ActiveSessions.Emplace_GetRef(SessionName, SessionSettings);
 }
 
 FNamedOnlineSession* FOnlineSessionASH::AddNamedSession(FName SessionName, const FOnlineSession& Session)
 {
 	FScopeLock ScopeLock(&SessionLock);
-	CurrentSession = new FNamedOnlineSession(SessionName, Session.SessionSettings);
-    return CurrentSession;
+	return &ActiveSessions.Emplace_GetRef(SessionName, Session);
 }
 
 FUniqueNetIdPtr FOnlineSessionASH::CreateSessionIdFromString(const FString& SessionIdStr)
@@ -56,14 +54,28 @@ FUniqueNetIdPtr FOnlineSessionASH::CreateSessionIdFromString(const FString& Sess
 
 FNamedOnlineSession* FOnlineSessionASH::GetNamedSession(FName SessionName)
 {
-	return CurrentSession;
+	FScopeLock ScopeLock(&SessionLock);
+	for (int32 SearchIndex = 0; SearchIndex < ActiveSessions.Num(); SearchIndex++)
+	{
+		if (ActiveSessions[SearchIndex].SessionName == SessionName)
+		{
+			return &ActiveSessions[SearchIndex];
+		}
+	}
+	return nullptr;
 }
 
 void FOnlineSessionASH::RemoveNamedSession(FName SessionName)
 {
 	FScopeLock ScopeLock(&SessionLock);
-	delete CurrentSession;
-	CurrentSession = nullptr;
+	for (int32 SearchIndex = 0; SearchIndex < ActiveSessions.Num(); SearchIndex++)
+	{
+		if (ActiveSessions[SearchIndex].SessionName == SessionName)
+		{
+			ActiveSessions.RemoveAtSwap(SearchIndex);
+			return;
+		}
+	}
 }
 
 bool FOnlineSessionASH::HasPresenceSession()
@@ -252,27 +264,31 @@ void FOnlineSessionASH::OnValidQueryPacketReceived(uint8* PacketData, int32 Pack
 	
 	// Iterate through all registered sessions and respond for each LAN match
 	FScopeLock ScopeLock(&SessionLock);
-
-	const FOnlineSessionSettings& Settings = CurrentSession->SessionSettings;
-
-	const bool bIsMatchInProgress = CurrentSession->SessionState == EOnlineSessionState::InProgress;
-
-	const bool bIsMatchJoinable = Settings.bIsLANMatch &&
-		(!bIsMatchInProgress || Settings.bAllowJoinInProgress) &&
-		Settings.NumPublicConnections > 0;
-
-	// Don't respond to query if the session is not a joinable LAN match.
-	if (bIsMatchJoinable)
+	for (int32 SessionIndex = 0; SessionIndex < ActiveSessions.Num(); SessionIndex++)
 	{
-		FNboSerializeToBufferASH Packet(LAN_BEACON_MAX_PACKET_SIZE);
-		// Create the basic header before appending additional information
-		CurrentLanSession->CreateHostResponsePacket(Packet, ClientNonce);
+		FNamedOnlineSession& Session = ActiveSessions[SessionIndex];
 
-		// Add all the session details
-		AppendSessionToPacket(Packet, CurrentSession);
+		const FOnlineSessionSettings& Settings = Session.SessionSettings;
 
-		// Broadcast this response so the client can see us
-		CurrentLanSession->BroadcastPacket(Packet, Packet.GetByteCount());
+		const bool bIsMatchInProgress = Session.SessionState == EOnlineSessionState::InProgress;
+
+		const bool bIsMatchJoinable = Settings.bIsLANMatch &&
+			(!bIsMatchInProgress || Settings.bAllowJoinInProgress) &&
+			Settings.NumPublicConnections > 0;
+
+		// Don't respond to query if the session is not a joinable LAN match.
+		if (bIsMatchJoinable)
+		{
+			FNboSerializeToBufferASH Packet(LAN_BEACON_MAX_PACKET_SIZE);
+			// Create the basic header before appending additional information
+			CurrentLanSession->CreateHostResponsePacket(Packet, ClientNonce);
+
+			// Add all the session details
+			AppendSessionToPacket(Packet, &Session);
+
+			// Broadcast this response so the client can see us
+			CurrentLanSession->BroadcastPacket(Packet, Packet.GetByteCount());
+		}
 	}
 }
 
@@ -653,15 +669,102 @@ bool FOnlineSessionASH::PingSearchResults(const FOnlineSessionSearchResult& Sear
     return false;
 }
 
+
+//---------------------------------------------------------------JOIN SESSIONS------------------------------------------
+
 bool FOnlineSessionASH::JoinSession(int32 LocalUserNum, FName SessionName, const FOnlineSessionSearchResult& DesiredSession)
 {
-    return false;
+	uint32 Result = ONLINE_FAIL;
+	FNamedOnlineSession* Session = GetNamedSession(SessionName);
+	// Don't join a session if already in one or hosting one
+	if (Session != nullptr)
+	{
+		UE_LOG(OnlineSessionASH, Warning, TEXT("JoinSession - Session (%s) already exists, can't join twice"), *SessionName.ToString());
+		TriggerOnJoinSessionCompleteDelegates(SessionName, EOnJoinSessionCompleteResult::AlreadyInSession);
+		return false;
+	}
+	
+	// Create a named session from the search result data
+	Session = AddNamedSession(SessionName, DesiredSession.Session);
+	Session->HostingPlayerNum = LocalUserNum;
+
+	// Create Internet or LAN match
+	if (!Session->SessionSettings.bIsLANMatch)
+	{
+		if (DesiredSession.Session.SessionInfo.IsValid())
+		{
+			const FOnlineSessionInfoASH* SearchSessionInfo = (const FOnlineSessionInfoASH*)DesiredSession.Session.SessionInfo.Get();
+
+			if (DesiredSession.Session.SessionSettings.bUsesPresence)
+			{
+				FOnlineSessionInfoASH* NewSessionInfo = new FOnlineSessionInfoASH(EASHSession::LobbySession, *SearchSessionInfo->SessionId);
+				Session->SessionInfo = MakeShareable(NewSessionInfo);
+
+				//Return = JoinLobbySession(PlayerNum, Session, &DesiredSession.Session);
+			}
+			else
+			{
+				FOnlineSessionInfoASH* NewSessionInfo = new FOnlineSessionInfoASH(EASHSession::AdvertisedSessionClient, *SearchSessionInfo->SessionId);
+				Session->SessionInfo = MakeShareable(NewSessionInfo);
+
+				//Return = JoinInternetSession(PlayerNum, Session, &DesiredSession.Session);
+			}
+		}
+		else
+		{
+			UE_LOG(OnlineSessionASH, Warning, TEXT("JoinSession - Invalid session info on search result"), *SessionName.ToString());
+		}
+	}
+	else
+	{
+		FOnlineSessionInfoASH* NewSessionInfo = new FOnlineSessionInfoASH(EASHSession::LANSession);
+		Session->SessionInfo = MakeShareable(NewSessionInfo);
+		Result = JoinLANSession(LocalUserNum, Session, &DesiredSession.Session);
+	}
+
+	if (Result != ONLINE_IO_PENDING)
+	{
+		if (Result != ONLINE_SUCCESS)
+		{
+			// Clean up the session info so we don't get into a confused state
+			RemoveNamedSession(SessionName);
+		}
+		else
+		{
+			//RegisterLocalPlayers(Session);
+		}
+
+		TriggerOnJoinSessionCompleteDelegates(SessionName, Result == ONLINE_SUCCESS ? EOnJoinSessionCompleteResult::Success : EOnJoinSessionCompleteResult::UnknownError);
+	}
+
+	return Result == ONLINE_SUCCESS || Result == ONLINE_IO_PENDING;
 }
 
 bool FOnlineSessionASH::JoinSession(const FUniqueNetId& LocalUserId, FName SessionName, const FOnlineSessionSearchResult& DesiredSession)
 {
-    return false;
+	return JoinSession(0, SessionName, DesiredSession);
 }
+
+uint32 FOnlineSessionASH::JoinLANSession(int32 PlayerNum, FNamedOnlineSession* Session, const FOnlineSession* SearchSession)
+{
+	uint32 Result = ONLINE_FAIL;
+	Session->SessionState = EOnlineSessionState::Pending;
+
+	if (Session->SessionInfo.IsValid())
+	{
+		// Copy the session info over
+		const FOnlineSessionInfoASH* SearchSessionInfo = (const FOnlineSessionInfoASH*)SearchSession->SessionInfo.Get();
+		FOnlineSessionInfoASH* SessionInfo = (FOnlineSessionInfoASH*)Session->SessionInfo.Get();
+
+		SessionInfo->HostAddr = SearchSessionInfo->HostAddr->Clone();
+		SessionInfo->ConnectionMethod = FASHConnectionMethod::Direct;
+		Result = ONLINE_SUCCESS;
+	}
+
+	return Result;
+}
+//---------------------------------------------------------------JOIN SESSIONS------------------------------------------
+
 
 bool FOnlineSessionASH::FindFriendSession(int32 LocalUserNum, const FUniqueNetId& Friend)
 {
@@ -698,14 +801,112 @@ bool FOnlineSessionASH::SendSessionInviteToFriends(const FUniqueNetId& LocalUser
     return false;
 }
 
+/** Get a resolved connection string from a session info */
+static bool GetConnectStringFromSessionInfo(TSharedPtr<FOnlineSessionInfoASH>& SessionInfo, FString& ConnectInfo, int32 PortOverride = 0)
+{
+	bool bSuccess = false;
+
+	if (SessionInfo.IsValid())
+	{
+		bool bP2PDataValid = (SessionInfo->ASHP2PAddr.IsValid() && SessionInfo->ASHP2PAddr->IsValid());
+		bool bHostDataValid = (SessionInfo->HostAddr.IsValid() && SessionInfo->HostAddr->IsValid());
+
+		// If we have host data, attempt to use it.
+		if (bHostDataValid && SessionInfo->ConnectionMethod == FASHConnectionMethod::Direct)
+		{
+			UE_LOG(OnlineSessionASH, Display, TEXT("Using Host Data for Connection Serialization"));
+
+			int32 HostPort = SessionInfo->HostAddr->GetPort();
+			if (PortOverride > 0)
+			{
+				HostPort = PortOverride;
+			}
+
+			ConnectInfo = FString::Printf(TEXT("%s:%d"), *SessionInfo->HostAddr->ToString(false), HostPort);
+			bSuccess = true;
+		}
+		else if (bP2PDataValid)
+		{
+			UE_LOG(OnlineSessionASH, Display, TEXT("Using P2P Data for Connection Serialization"));
+
+			int32 SteamPort = SessionInfo->ASHP2PAddr->GetPort();
+			if (PortOverride > 0)
+			{
+				SteamPort = PortOverride;
+			}
+
+			ConnectInfo = FString::Printf(TEXT("steam.%s:%d"), *SessionInfo->ASHP2PAddr->ToString(false), SteamPort);
+			bSuccess = true;
+		}
+		else
+		{
+			UE_LOG(OnlineSessionASH, Warning, TEXT("GetConnectStringFromSessionInfo - Steam could not resolve session info! ValidP2P[%d] ValidHost[%d] ConnectionMethod[%s]"),
+				bP2PDataValid, bHostDataValid, *LexToString(SessionInfo->ConnectionMethod));
+			return false;
+		}
+	}
+
+	return bSuccess;
+}
+
+
 bool FOnlineSessionASH::GetResolvedConnectString(FName SessionName, FString& ConnectInfo, FName PortType)
 {
-    return false;
+	bool bSuccess = false;
+	// Find the session
+	FNamedOnlineSession* Session = GetNamedSession(SessionName);
+	if (Session != nullptr)
+	{
+		TSharedPtr<FOnlineSessionInfoASH> SessionInfo = StaticCastSharedPtr<FOnlineSessionInfoASH>(Session->SessionInfo);
+		if (PortType == NAME_BeaconPort)
+		{
+			int32 BeaconListenPort = GetBeaconPortFromSessionSettings(Session->SessionSettings);
+			bSuccess = GetConnectStringFromSessionInfo(SessionInfo, ConnectInfo, BeaconListenPort);
+		}
+		else if (PortType == NAME_GamePort)
+		{
+			bSuccess = GetConnectStringFromSessionInfo(SessionInfo, ConnectInfo);
+		}
+
+		if (!bSuccess)
+		{
+			UE_LOG(OnlineSessionASH, Warning, TEXT("GetResolvedConnectString(Local) - Invalid session info for session %s in GetResolvedConnectString()"), *SessionName.ToString());
+		}
+	}
+	else
+	{
+		UE_LOG(OnlineSessionASH, Warning,
+			TEXT("GetResolvedConnectString(Local) - Unknown session name (%s) specified to GetResolvedConnectString()"),
+			*SessionName.ToString());
+	}
+
+	return bSuccess;
 }
 
 bool FOnlineSessionASH::GetResolvedConnectString(const FOnlineSessionSearchResult& SearchResult, FName PortType, FString& ConnectInfo)
 {
-    return false;
+	bool bSuccess = false;
+	if (SearchResult.Session.SessionInfo.IsValid())
+	{
+		TSharedPtr<FOnlineSessionInfoASH> SessionInfo = StaticCastSharedPtr<FOnlineSessionInfoASH>(SearchResult.Session.SessionInfo);
+
+		if (PortType == NAME_BeaconPort)
+		{
+			int32 BeaconListenPort = GetBeaconPortFromSessionSettings(SearchResult.Session.SessionSettings);
+			bSuccess = GetConnectStringFromSessionInfo(SessionInfo, ConnectInfo, BeaconListenPort);
+		}
+		else if (PortType == NAME_GamePort)
+		{
+			bSuccess = GetConnectStringFromSessionInfo(SessionInfo, ConnectInfo);
+		}
+	}
+
+	if (!bSuccess || ConnectInfo.IsEmpty())
+	{
+		UE_LOG(OnlineSessionASH, Warning, TEXT("GetResolvedConnectString(Remote) - Invalid session info in search result to GetResolvedConnectString()"));
+	}
+
+	return bSuccess;
 }
 
 FOnlineSessionSettings* FOnlineSessionASH::GetSessionSettings(FName SessionName)
